@@ -548,11 +548,6 @@ pub struct Token {
 }
 
 #[ffi_export]
-pub fn free_rstr(value: repr_c::String) {
-    let _ = CString::new::<String>(value.into()).expect("Failed to free string");
-}
-
-#[ffi_export]
 pub fn value_as_string(value: &TokenValue, token_type: TokenType) -> repr_c::String {
     let value = match token_type {
         TokenType::Ident => value.get_ident(),
