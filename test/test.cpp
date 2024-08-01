@@ -37,15 +37,8 @@ std::string input() {
 int main(void) {
     // we use a string literal as input for the parser
     // and a multi-line string for better readability
-    // std::string in = input();
-    const int8_t* css_input = (int8_t*)R"(
-        .class {
-            color: red;
-            background-color: blue;
-            var-thing: var(--thing);
-        }
-    )";
-    // (int8_t*)in.c_str();
+    std::string in = input();
+    const int8_t* css_input = (int8_t*)in.c_str();
 
     Vec_Token_t tokens = css_parse(css_input);
     if(tokens.ptr == nullptr) {
