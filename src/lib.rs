@@ -189,22 +189,22 @@ make_getters! {
 }
 
 macro_rules! cstr {
-    ($value:expr) => {
-        CString::new($value.to_string()).unwrap().into_raw()
+    ($value:expr, $err:expr) => {
+        CString::new($value.to_string()).expect($err).into_raw()
     };
 }
 
 impl<'i> From<cssparser::Token<'i>> for TokenValue {
     fn from(value: cssparser::Token<'i>) -> Self {
         match value {
-            cssparser::Token::Ident(ident) => Self(Value::new_ident(cstr!(ident))),
-            cssparser::Token::AtKeyword(at_keyword) => Self(Value::new_at_keyword(cstr!(at_keyword))),
-            cssparser::Token::Hash(hash) => Self(Value::new_hash(cstr!(hash))),
-            cssparser::Token::IDHash(id_hash) => Self(Value::new_id_hash(cstr!(id_hash))),
-            cssparser::Token::QuotedString(quoted_string) => Self(Value::new_quoted_string(cstr!(quoted_string))),
-            cssparser::Token::UnquotedUrl(unquoted_url) => Self(Value::new_unquoted_url(cstr!(unquoted_url))),
-            cssparser::Token::Comment(comment) => Self(Value::new_comment(cstr!(comment))),
-            cssparser::Token::Function(function) => Self(Value::new_function(cstr!(function))),
+            cssparser::Token::Ident(ident) => Self(Value::new_ident(cstr!(ident, "Failed to convert ident"))),
+            cssparser::Token::AtKeyword(at_keyword) => Self(Value::new_at_keyword(cstr!(at_keyword, "Failed to convert at keyword"))),
+            cssparser::Token::Hash(hash) => Self(Value::new_hash(cstr!(hash, "Failed to convert hash"))),
+            cssparser::Token::IDHash(id_hash) => Self(Value::new_id_hash(cstr!(id_hash, "Failed to convert id hash"))),
+            cssparser::Token::QuotedString(quoted_string) => Self(Value::new_quoted_string(cstr!(quoted_string, "Failed to convert quoted string"))),
+            cssparser::Token::UnquotedUrl(unquoted_url) => Self(Value::new_unquoted_url(cstr!(unquoted_url, "Failed to convert unquoted url"))),
+            cssparser::Token::Comment(comment) => Self(Value::new_comment(cstr!(comment, "Failed to convert comment"))),
+            cssparser::Token::Function(function) => Self(Value::new_function(cstr!(function, "Failed to convert function"))),
             cssparser::Token::Percentage {
                 has_sign,
                 int_value,
@@ -232,7 +232,7 @@ impl<'i> From<cssparser::Token<'i>> for TokenValue {
                         Some(value) => &value,
                         None => std::ptr::null(),
                     },
-                    unit: cstr!(unit),
+                    unit: cstr!(unit, "Failed to convert unit"),
                 }
             )),
             cssparser::Token::Number {
@@ -250,9 +250,9 @@ impl<'i> From<cssparser::Token<'i>> for TokenValue {
                 }
             )),
             cssparser::Token::Delim(delim) => Self(Value::new_delim(delim as c_char)),
-            cssparser::Token::WhiteSpace(whitespace) => Self(Value::new_whitespace(cstr!(whitespace))),
-            cssparser::Token::BadString(bad_string) => Self(Value::new_bad_string(cstr!(bad_string))),
-            cssparser::Token::BadUrl(bad_url) => Self(Value::new_bad_url(cstr!(bad_url))),
+            cssparser::Token::WhiteSpace(whitespace) => Self(Value::new_whitespace(cstr!(whitespace, "Failed to convert whitespace"))),
+            cssparser::Token::BadString(bad_string) => Self(Value::new_bad_string(cstr!(bad_string, "Failed to convert bad string"))),
+            cssparser::Token::BadUrl(bad_url) => Self(Value::new_bad_url(cstr!(bad_url, "Failed to convert bad url"))),
             cssparser::Token::CDC => Self(Value::empty()),
             cssparser::Token::CDO => Self(Value::empty()),
             cssparser::Token::CloseCurlyBracket => Self(Value::empty()),
