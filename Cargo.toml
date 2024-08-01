@@ -1,0 +1,14 @@
+[package]
+name = "c_cssparser"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[features]
+headers = ["safer-ffi/headers"]
+
+[dependencies]
+cssparser = "*"
+safer-ffi = "0.1.11"
