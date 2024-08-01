@@ -640,17 +640,17 @@ impl<'a> From<cssparser::Token<'a>> for Token {
 }
 
 #[no_mangle]
-pub fn parse<'a>(parser: &'a mut cssparser::Parser, tokens: &mut Vec<Token>) -> Result<(), cssparser::ParseError<'a, ()>> {
-    let token = parser.next()?.clone();
-    if token == cssparser::Token::CurlyBracketBlock || token == cssparser::Token::SquareBracketBlock || token == cssparser::Token::ParenthesisBlock {
-        parser.parse_nested_block::<_, _, ()>(|p| {
-            while let Ok(token) = p.next() {
-                tokens.push(Token::from(token));
-            }
-            Ok(())
-        }).expect("Failed to parse nested block");
-    }    tokens.push(Token::from(token));
-    Ok(())
+pub fn parse<'a>(parser: &mut cssparser::Parser, mut tokens: Vec<Token>) -> Result<Vec<Token>, cssparser::ParseError<'a, Vec<Token>>> {
+    while let Ok(token) = parser.next().cloned() {
+        if token == cssparser::Token::CurlyBracketBlock ||
+        token == cssparser::Token::SquareBracketBlock ||
+        token == cssparser::Token::ParenthesisBlock
+        {
+            tokens = parser.parse_nested_block::<_, Vec<Token>, Vec<Token>>(|p| parse(p, tokens)).expect("Failed to parse nested block");
+        }
+        tokens.push(Token::from(token));
+    }
+    Ok(tokens)
 }
 
 #[ffi_export]
@@ -658,16 +658,26 @@ pub fn css_parse<'i>(input: *const c_char) -> safer_ffi::Vec<Token> {
     let input = unsafe { std::ffi::CStr::from_ptr(input).to_str().expect("Failed to convert input to string") };
     let mut input = cssparser::ParserInput::new(input);
     let mut parser = cssparser::Parser::new(&mut input);
-    let mut tokens = Vec::new();
 
+    let mut tokens = None;
     loop {
-        match parse(&mut parser, &mut tokens) {
-            Ok(_) => (),
-            Err(_) => break,
-        }
+        let toks = match parse(&mut parser, Vec::new()) {
+            Ok(v) => v,
+            Err(v) => {
+                match v.kind {
+                    cssparser::ParseErrorKind::Basic(_) => break,
+                    cssparser::ParseErrorKind::Custom(v) => {
+                        tokens = Some(v);
+                        break;
+                    },
+                }
+            },
+        };
+
+        tokens = Some(toks);
     }
 
-    let tokens: safer_ffi::Vec<Token> = tokens.into();
+    let tokens: safer_ffi::Vec<Token> = tokens.expect("Failed to parse tokens").into();
 
     tokens
 }
