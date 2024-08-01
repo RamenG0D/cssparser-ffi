@@ -644,7 +644,12 @@ pub fn parse<'a>(parser: &mut cssparser::Parser, mut tokens: Vec<Token>) -> Resu
 }
 
 #[ffi_export]
-pub fn css_parse<'i>(input: *const c_char) -> safer_ffi::Vec<Token> {
+pub fn free_tokens(tokens: safer_ffi::Vec<Token>) {
+    let _: Vec<Token> = tokens.into();
+}
+
+#[ffi_export]
+pub fn parse_css<'i>(input: *const c_char) -> safer_ffi::Vec<Token> {
     let input = unsafe { std::ffi::CStr::from_ptr(input).to_str().expect("Failed to convert input to string") };
     let mut input = cssparser::ParserInput::new(input);
     let mut parser = cssparser::Parser::new(&mut input);

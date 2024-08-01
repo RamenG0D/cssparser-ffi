@@ -245,25 +245,6 @@ typedef struct Token {
     TokenValue_t * value;
 } Token_t;
 
-/** \brief
- *  Same as [`Vec<T>`][`rust::Vec`], but with guaranteed `#[repr(C)]` layout
- */
-typedef struct Vec_Token {
-    /** <No documentation available> */
-    Token_t * ptr;
-
-    /** <No documentation available> */
-    size_t len;
-
-    /** <No documentation available> */
-    size_t cap;
-} Vec_Token_t;
-
-/** <No documentation available> */
-Vec_Token_t
-css_parse (
-    int8_t const * input);
-
 /** <No documentation available> */
 void
 debug_token (
@@ -296,6 +277,25 @@ typedef struct Dimension {
 Dimension_t
 dimension (
     TokenValue_t const * value);
+
+/** \brief
+ *  Same as [`Vec<T>`][`rust::Vec`], but with guaranteed `#[repr(C)]` layout
+ */
+typedef struct Vec_Token {
+    /** <No documentation available> */
+    Token_t * ptr;
+
+    /** <No documentation available> */
+    size_t len;
+
+    /** <No documentation available> */
+    size_t cap;
+} Vec_Token_t;
+
+/** <No documentation available> */
+void
+free_tokens (
+    Vec_Token_t tokens);
 
 /** <No documentation available> */
 Vec_uint8_t
@@ -333,6 +333,11 @@ typedef struct Number {
 Number_t
 number (
     TokenValue_t const * value);
+
+/** <No documentation available> */
+Vec_Token_t
+parse_css (
+    int8_t const * input);
 
 /** <No documentation available> */
 typedef struct Percentage {

@@ -39,6 +39,9 @@ int main(void) {
     // and a multi-line string for better readability
     std::string in = input();
     const int8_t* css_input = (int8_t*)in.c_str();
+    // just use a char* for the input behind the scenes
+    // so this is also perfectly valid.
+    //
     // const int8_t* css_input = (int8_t*)R"(
     //     /* This is a comment */
     //     .class {
@@ -49,7 +52,7 @@ int main(void) {
     //     }
     // )";
 
-    Vec_Token_t tokens = css_parse(css_input);
+    Vec_Token_t tokens = parse_css(css_input);
     if(tokens.ptr == nullptr) {
         std::cout << "Error: Failed to parse tokens array" << std::endl;
         return 1;
@@ -60,6 +63,9 @@ int main(void) {
     for(size_t i = 0; i < tokens.len; i++) {
         debug_token(&tokens.ptr[i]);
     }
+
+    // free the tokens
+    free_tokens(tokens);
 
     return 0;
 }
