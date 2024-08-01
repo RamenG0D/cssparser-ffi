@@ -1,5 +1,7 @@
 #include <cstdio>
 #include "parser.h"
+#include <string>
+#include <iostream>
 
 // #define file_input
 
@@ -144,31 +146,23 @@ int main(void) {
     // we use a string literal as input for the parser
     // and a multi-line string for better readability
     const char* css_input = R"(
-        .checkbox:test {
+        checkbox:test {
         }
     )";
 
-    /*Token token = Token {
-        TokenType::Ident,
-        Value { "checkbox" }
-    };
-
-    printf("Token: ");
-    if(token.token_type == TokenType::Ident) {
-        printf("Ident(\"%s\")\n", token.value.ident);
-    }*/
-
-    auto tokens = css_parse(css_input);
-    if(tokens.data == nullptr) {
+    Vec_Token_t tokens = css_parse((const int8_t*)css_input);
+    if(tokens.ptr == nullptr) {
       printf("Error: tokens array is NULL\n");
       return 1;
     }
     printf("Tokens array recieved successfully\n");
-    printf("Number of tokens: %ld\n", tokens.length);
+    printf("Number of tokens: %ld\n", tokens.len);
 
     printf("Token: ");
-    if(tokens.data[0].token_type == TokenType::Ident) {
-      printf("Ident(\"%s\")\n", tokens.data[0].value.ident);
+    if(tokens.ptr->token_type == TokenType::TOKEN_TYPE_IDENT) {
+      Vec_uint8_t i = value_as_string(&tokens.ptr->value, &tokens.ptr->token_type);
+      std::string s((const char*)i.ptr, (const size_t)i.len);
+      std::cout << "Ident(\"" << s << "\")" << std::endl;
     }
 
     return 0;

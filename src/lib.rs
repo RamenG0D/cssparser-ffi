@@ -1,5 +1,4 @@
 #![allow(nonstandard_style)]
-
 use std::{ffi::{c_char, c_float, c_int, CString}, fmt::Debug};
 
 use safer_ffi::{derive_ReprC, ffi_export, prelude::repr_c};
@@ -155,6 +154,39 @@ pub enum TokenType {
 #[derive_ReprC]
 #[repr(opaque)]
 pub struct TokenValue(Value);
+
+macro_rules! value_getter {
+    ($name:ident, $type:ty) => {
+        #[safer_ffi::ffi_export]
+        pub fn $name(value: &TokenValue) -> $type {
+            unsafe{value.0.$name}
+        }
+    };
+}
+
+macro_rules! make_getters {
+    ($($name:ident, $type:ty;)*) => {
+        $(value_getter!($name, $type);)*
+    };
+}
+
+make_getters! {
+    ident, cstr;
+    at_keyword, cstr;
+    hash, cstr;
+    id_hash, cstr;
+    quoted_string, cstr;
+    unquoted_url, cstr;
+    comment, cstr;
+    function, cstr;
+    percentage, Percentage;
+    dimension, Dimension;
+    number, Number;
+    whitespace, cstr;
+    bad_string, cstr;
+    bad_url, cstr;
+    delim, c_char;
+}
 
 macro_rules! cstr {
     ($value:expr) => {
@@ -525,42 +557,47 @@ pub struct Token {
     pub value: repr_c::Box<TokenValue>,
 }
 
+#[ffi_export]
+pub fn value_as_string(value: &TokenValue, token_type: &TokenType) -> repr_c::String {
+    let value = match token_type {
+        TokenType::Ident => unsafe { to_cstr!(value.get_ident().cast_mut()) },
+        TokenType::AtKeyword => unsafe { to_cstr!(value.get_at_keyword().cast_mut()) },
+        TokenType::Hash => unsafe { to_cstr!(value.get_hash().cast_mut()) },
+        TokenType::IDHash => unsafe { to_cstr!(value.get_id_hash().cast_mut()) },
+        TokenType::QuotedString => unsafe { to_cstr!(value.get_quoted_string().cast_mut()) },
+        TokenType::UnquotedUrl => unsafe { to_cstr!(value.get_unquoted_url().cast_mut()) },
+        TokenType::Comment => unsafe { to_cstr!(value.get_comment().cast_mut()) },
+        TokenType::Function => unsafe { to_cstr!(value.get_function().cast_mut()) },
+        TokenType::WhiteSpace => unsafe { to_cstr!(value.get_whitespace().cast_mut()) },
+        TokenType::BadString => unsafe { to_cstr!(value.get_bad_string().cast_mut()) },
+        TokenType::BadUrl => unsafe { to_cstr!(value.get_bad_url().cast_mut()) },
+        TokenType::Percentage => format!("{:?}", value.get_percentage()),
+        TokenType::Dimension => format!("{:?}", value.get_dimension()),
+        TokenType::Number => format!("{:?}", value.get_number()),
+        TokenType::Delim => format!("{:?}", value.get_delim()),
+        TokenType::Colon => ":".to_string(),
+        TokenType::Semicolon => ";".to_string(),
+        TokenType::Comma => ",".to_string(),
+        TokenType::IncludeMatch => "~=".to_string(),
+        TokenType::DashMatch => "|=".to_string(),
+        TokenType::PrefixMatch => "^=".to_string(),
+        TokenType::SuffixMatch => "$=".to_string(),
+        TokenType::SubstringMatch => "*=".to_string(),
+        TokenType::CDO => "<!--".to_string(),
+        TokenType::CDC => "-->".to_string(),
+        TokenType::ParenthesisBlock => "(".to_string(),
+        TokenType::SquareBracketBlock => "[".to_string(),
+        TokenType::CurlyBracketBlock => "{".to_string(),
+        TokenType::CloseParenthesis => ")".to_string(),
+        TokenType::CloseSquareBracket => "]".to_string(),
+        TokenType::CloseCurlyBracket => "}".to_string(),
+    };
+    value.into()
+}
+
 impl Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value = match self.token_type {
-            TokenType::Ident => unsafe { to_cstr!(self.value.get_ident().cast_mut()) },
-            TokenType::AtKeyword => unsafe { to_cstr!(self.value.get_at_keyword().cast_mut()) },
-            TokenType::Hash => unsafe { to_cstr!(self.value.get_hash().cast_mut()) },
-            TokenType::IDHash => unsafe { to_cstr!(self.value.get_id_hash().cast_mut()) },
-            TokenType::QuotedString => unsafe { to_cstr!(self.value.get_quoted_string().cast_mut()) },
-            TokenType::UnquotedUrl => unsafe { to_cstr!(self.value.get_unquoted_url().cast_mut()) },
-            TokenType::Comment => unsafe { to_cstr!(self.value.get_comment().cast_mut()) },
-            TokenType::Function => unsafe { to_cstr!(self.value.get_function().cast_mut()) },
-            TokenType::WhiteSpace => unsafe { to_cstr!(self.value.get_whitespace().cast_mut()) },
-            TokenType::BadString => unsafe { to_cstr!(self.value.get_bad_string().cast_mut()) },
-            TokenType::BadUrl => unsafe { to_cstr!(self.value.get_bad_url().cast_mut()) },
-            TokenType::Percentage => format!("{:?}", self.value.get_percentage()),
-            TokenType::Dimension => format!("{:?}", self.value.get_dimension()),
-            TokenType::Number => format!("{:?}", self.value.get_number()),
-            TokenType::Delim => format!("{:?}", self.value.get_delim()),
-            TokenType::Colon => ":".to_string(),
-            TokenType::Semicolon => ";".to_string(),
-            TokenType::Comma => ",".to_string(),
-            TokenType::IncludeMatch => "~=".to_string(),
-            TokenType::DashMatch => "|=".to_string(),
-            TokenType::PrefixMatch => "^=".to_string(),
-            TokenType::SuffixMatch => "$=".to_string(),
-            TokenType::SubstringMatch => "*=".to_string(),
-            TokenType::CDO => "<!--".to_string(),
-            TokenType::CDC => "-->".to_string(),
-            TokenType::ParenthesisBlock => "(".to_string(),
-            TokenType::SquareBracketBlock => "[".to_string(),
-            TokenType::CurlyBracketBlock => "{".to_string(),
-            TokenType::CloseParenthesis => ")".to_string(),
-            TokenType::CloseSquareBracket => "]".to_string(),
-            TokenType::CloseCurlyBracket => "}".to_string(),
-        };
-
+        let value = value_as_string(&self.value, &self.token_type).to_string();
         write!(f, "Token {{ token_type: {:?}, value: {:?} }}", self.token_type, value)
     }
 }
@@ -601,7 +638,7 @@ pub fn parse<'a>(parser: &'a mut cssparser::Parser, tokens: &mut Vec<Token>) -> 
 }
 
 #[ffi_export]
-pub fn css_parse<'i>(input: *const c_char) -> safer_ffi::Vec<Token> {
+pub fn css_parse<'i>(input: *const i8) -> safer_ffi::Vec<Token> {
     let input = unsafe { std::ffi::CStr::from_ptr(input) };
     let mut input = cssparser::ParserInput::new(match input.to_str() {
         Ok(value) => value,

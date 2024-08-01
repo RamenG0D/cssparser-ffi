@@ -13,9 +13,32 @@
 extern "C" {
 #endif
 
+/** <No documentation available> */
+typedef struct TokenValue TokenValue_t;
+
 
 #include <stddef.h>
 #include <stdint.h>
+
+/** <No documentation available> */
+int8_t const *
+at_keyword (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+bad_string (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+bad_url (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+comment (
+    TokenValue_t const * value);
 
 /** <No documentation available> */
 /** \remark Has the same ABI as `uint8_t` **/
@@ -185,9 +208,6 @@ enum TokenType {
 TokenType_t;
 
 /** <No documentation available> */
-typedef struct TokenValue TokenValue_t;
-
-/** <No documentation available> */
 typedef struct Token {
     /** <No documentation available> */
     TokenType_t token_type;
@@ -226,7 +246,126 @@ typedef struct Vec_Token {
 } Vec_Token_t;
 
 /** <No documentation available> */
-Vec_Token_t css_parse (int8_t const * input);
+Vec_Token_t
+css_parse (
+    int8_t const * input);
+
+/** <No documentation available> */
+int8_t
+delim (
+    TokenValue_t const * value);
+
+
+#include <stdbool.h>
+
+/** <No documentation available> */
+typedef struct Dimension {
+    /** <No documentation available> */
+    bool has_sign;
+
+    /** <No documentation available> */
+    float value;
+
+    /** <No documentation available> */
+    int32_t const * int_value;
+
+    /** <No documentation available> */
+    int8_t const * unit;
+} Dimension_t;
+
+/** <No documentation available> */
+Dimension_t
+dimension (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+function (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+hash (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+id_hash (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+ident (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+typedef struct Number {
+    /** <No documentation available> */
+    bool has_sign;
+
+    /** <No documentation available> */
+    float value;
+
+    /** <No documentation available> */
+    int32_t const * int_value;
+} Number_t;
+
+/** <No documentation available> */
+Number_t
+number (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+typedef struct Percentage {
+    /** <No documentation available> */
+    bool has_sign;
+
+    /** <No documentation available> */
+    float unit_value;
+
+    /** <No documentation available> */
+    int32_t const * int_value;
+} Percentage_t;
+
+/** <No documentation available> */
+Percentage_t
+percentage (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+quoted_string (
+    TokenValue_t const * value);
+
+/** <No documentation available> */
+int8_t const *
+unquoted_url (
+    TokenValue_t const * value);
+
+/** \brief
+ *  Same as [`Vec<T>`][`rust::Vec`], but with guaranteed `#[repr(C)]` layout
+ */
+typedef struct Vec_uint8 {
+    /** <No documentation available> */
+    uint8_t * ptr;
+
+    /** <No documentation available> */
+    size_t len;
+
+    /** <No documentation available> */
+    size_t cap;
+} Vec_uint8_t;
+
+/** <No documentation available> */
+Vec_uint8_t
+value_as_string (
+    TokenValue_t const * value,
+    TokenType_t const * token_type);
+
+/** <No documentation available> */
+int8_t const *
+whitespace (
+    TokenValue_t const * value);
 
 
 #ifdef __cplusplus
