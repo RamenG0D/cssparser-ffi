@@ -160,7 +160,7 @@ int main(void) {
 
     printf("Token: ");
     if(tokens.ptr->token_type == TokenType::TOKEN_TYPE_IDENT) {
-      Vec_uint8_t i = value_as_string(&tokens.ptr->value, &tokens.ptr->token_type);
+      Vec_uint8_t i = value_as_string(tokens.ptr->value, &tokens.ptr->token_type);
       std::string s((const char*)i.ptr, (const size_t)i.len);
       std::cout << "Ident(\"" << s << "\")" << std::endl;
     }

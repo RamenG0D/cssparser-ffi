@@ -664,5 +664,5 @@ pub fn css_parse<'i>(input: *const i8) -> safer_ffi::Vec<Token> {
         println!("{:#?}", token);
     }
 
-    safer_ffi::Vec::from(tokens)
+    tokens.into()
 }
