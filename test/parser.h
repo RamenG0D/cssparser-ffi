@@ -265,6 +265,11 @@ css_parse (
     int8_t const * input);
 
 /** <No documentation available> */
+void
+debug_token (
+    Token_t const * token);
+
+/** <No documentation available> */
 int8_t
 delim (
     TokenValue_t const * value);
@@ -291,11 +296,6 @@ typedef struct Dimension {
 Dimension_t
 dimension (
     TokenValue_t const * value);
-
-/** <No documentation available> */
-void
-free_rstr (
-    Vec_uint8_t value);
 
 /** <No documentation available> */
 Vec_uint8_t
@@ -358,14 +358,13 @@ quoted_string (
 
 /** <No documentation available> */
 Vec_uint8_t
-unquoted_url (
-    TokenValue_t const * value);
+token_to_string (
+    Token_t const * token);
 
 /** <No documentation available> */
 Vec_uint8_t
-value_as_string (
-    TokenValue_t const * value,
-    TokenType_t token_type);
+unquoted_url (
+    TokenValue_t const * value);
 
 /** <No documentation available> */
 Vec_uint8_t

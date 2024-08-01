@@ -39,6 +39,15 @@ int main(void) {
     // and a multi-line string for better readability
     std::string in = input();
     const int8_t* css_input = (int8_t*)in.c_str();
+    // const int8_t* css_input = (int8_t*)R"(
+    //     /* This is a comment */
+    //     .class {
+    //         color: red;
+    //         background-color: blue;
+    //         custom-property: 1;
+    //         var-property: var(--custom-property);
+    //     }
+    // )";
 
     Vec_Token_t tokens = css_parse(css_input);
     if(tokens.ptr == nullptr) {
@@ -49,10 +58,7 @@ int main(void) {
     std::cout << "Number of tokens: " << tokens.len << std::endl;
 
     for(size_t i = 0; i < tokens.len; i++) {
-        Token_t token = tokens.ptr[i];
-        auto value = value_as_string(token.value, token.token_type);
-        std::string s((const char*)value.ptr, value.len);
-        std::cout << "Token: Value(\"" << s << "\")" << std::endl;
+        debug_token(&tokens.ptr[i]);
     }
 
     return 0;

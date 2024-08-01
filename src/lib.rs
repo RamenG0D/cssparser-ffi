@@ -1,6 +1,5 @@
 #![allow(nonstandard_style)]
-use std::{ffi::{c_char, c_float, c_int, CString}, fmt::Debug};
-
+use std::{ffi::{c_char, c_float, c_int}, fmt::Debug};
 use safer_ffi::{derive_ReprC, ffi_export, prelude::repr_c};
 
 type cstr = repr_c::String;
@@ -548,46 +547,35 @@ pub struct Token {
 }
 
 #[ffi_export]
-pub fn value_as_string(value: &TokenValue, token_type: TokenType) -> repr_c::String {
-    let value = match token_type {
-        TokenType::Ident => value.get_ident(),
-        TokenType::AtKeyword => value.get_at_keyword(),
-        TokenType::Hash => value.get_hash(),
-        TokenType::IDHash => value.get_id_hash(),
-        TokenType::QuotedString => value.get_quoted_string(),
-        TokenType::UnquotedUrl => value.get_unquoted_url(),
-        TokenType::Comment => value.get_comment(),
-        TokenType::Function => value.get_function(),
+pub fn token_to_string(token: &Token) -> repr_c::String {
+    let value = match token.token_type {
+        TokenType::Ident => token.value.get_ident(),
+        TokenType::AtKeyword => token.value.get_at_keyword(),
+        TokenType::Hash => token.value.get_hash(),
+        TokenType::IDHash => token.value.get_id_hash(),
+        TokenType::QuotedString => token.value.get_quoted_string(),
+        TokenType::UnquotedUrl => token.value.get_unquoted_url(),
+        TokenType::Comment => token.value.get_comment(),
+        TokenType::Function => token.value.get_function(),
         TokenType::Percentage => {
-            let percent = value.get_percentage();
-            let mut value = percent.unit_value.to_string();
-            if let Some(int_value) = percent.int_value {
-                value.push_str(&int_value.to_string());
-            }
-            value.push('%');
+            let percent = token.value.get_percentage();
+            let value = format!("{:?}", percent);
             value.into()
         },
         TokenType::Dimension => {
-            let dim = value.get_dimension();
-            let mut value = dim.value.to_string();
-            if let Some(int_value) = dim.int_value {
-                value.push_str(&int_value.to_string());
-            }
-            value.push_str(&dim.unit);
+            let dim = token.value.get_dimension();
+            let value = format!("{:?}", dim);
             value.into()
         },
         TokenType::Number => {
-            let num = value.get_number();
-            let mut value = num.value.to_string();
-            if let Some(int_value) = num.int_value {
-                value.push_str(&int_value.to_string());
-            }
+            let num = token.value.get_number();
+            let value = format!("{:?}", num);
             value.into()
         },
-        TokenType::WhiteSpace => value.get_whitespace(),
-        TokenType::BadString => value.get_bad_string(),
-        TokenType::BadUrl => value.get_bad_url(),
-        TokenType::Delim => value.get_delim().to_string().into(),
+        TokenType::WhiteSpace => token.value.get_whitespace(),
+        TokenType::BadString => token.value.get_bad_string(),
+        TokenType::BadUrl => token.value.get_bad_url(),
+        TokenType::Delim => token.value.get_delim().to_string().into(),
         TokenType::Colon => ":".to_string().into(),
         TokenType::Semicolon => ";".to_string().into(),
         TokenType::Comma => ",".to_string().into(),
@@ -611,9 +599,14 @@ pub fn value_as_string(value: &TokenValue, token_type: TokenType) -> repr_c::Str
 
 impl Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value = value_as_string(&self.value, self.token_type).to_string();
-        write!(f, "Token {{ token_type: {:?}, value: {:?} }}", self.token_type, value)
+        let value = token_to_string(self).to_string();
+        write!(f, "{:?}(\"{}\")", self.token_type, value)
     }
+}
+
+#[ffi_export]
+pub fn debug_token(token: &Token) {
+    println!("{:?}", token);
 }
 
 impl Token {
@@ -636,14 +629,16 @@ impl<'a> From<cssparser::Token<'a>> for Token {
 
 #[no_mangle]
 pub fn parse<'a>(parser: &mut cssparser::Parser, mut tokens: Vec<Token>) -> Result<Vec<Token>, cssparser::ParseError<'a, Vec<Token>>> {
+    let parse_inner = |parser: &mut cssparser::Parser, tokens: Vec<Token>| parser.parse_nested_block::<_, Vec<Token>, Vec<Token>>(|p| parse(p, tokens)).expect("Failed to parse nested block");
     while let Ok(token) = parser.next().cloned() {
-        if token == cssparser::Token::CurlyBracketBlock ||
+        tokens.push(Token::from(&token));
+        if let cssparser::Token::Function(_) = token {
+            tokens = parse_inner(parser, tokens);
+        } else if token == cssparser::Token::CurlyBracketBlock ||
         token == cssparser::Token::SquareBracketBlock ||
-        token == cssparser::Token::ParenthesisBlock
-        {
-            tokens = parser.parse_nested_block::<_, Vec<Token>, Vec<Token>>(|p| parse(p, tokens)).expect("Failed to parse nested block");
+        token == cssparser::Token::ParenthesisBlock {
+            tokens = parse_inner(parser, tokens);
         }
-        tokens.push(Token::from(token));
     }
     Ok(tokens)
 }
@@ -668,6 +663,10 @@ pub fn css_parse<'i>(input: *const c_char) -> safer_ffi::Vec<Token> {
                 }
             },
         };
+
+        if toks.is_empty() {
+            break;
+        }
 
         tokens = Some(toks);
     }
