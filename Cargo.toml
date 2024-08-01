@@ -11,4 +11,5 @@ headers = ["safer-ffi/headers"]
 
 [dependencies]
 cssparser = "*"
+paste = "1.0.15"
 safer-ffi = "0.1.11"

@@ -158,11 +158,11 @@ int main(void) {
     printf("Tokens array recieved successfully\n");
     printf("Number of tokens: %ld\n", tokens.len);
 
-    printf("Token: ");
-    if(tokens.ptr->token_type == TokenType::TOKEN_TYPE_IDENT) {
-      Vec_uint8_t i = value_as_string(tokens.ptr->value, &tokens.ptr->token_type);
-      std::string s((const char*)i.ptr, (const size_t)i.len);
-      std::cout << "Ident(\"" << s << "\")" << std::endl;
+    for(size_t i = 0; i < tokens.len; i++) {
+        Token_t token = tokens.ptr[i];
+        auto value = value_as_string(token.value, token.token_type);
+        std::string s((const char*)value.ptr, value.len);
+        std::cout << "Token: Value(\"" << s << "\")" << std::endl;
     }
 
     return 0;

@@ -20,23 +20,37 @@ typedef struct TokenValue TokenValue_t;
 #include <stddef.h>
 #include <stdint.h>
 
+/** \brief
+ *  Same as [`Vec<T>`][`rust::Vec`], but with guaranteed `#[repr(C)]` layout
+ */
+typedef struct Vec_uint8 {
+    /** <No documentation available> */
+    uint8_t * ptr;
+
+    /** <No documentation available> */
+    size_t len;
+
+    /** <No documentation available> */
+    size_t cap;
+} Vec_uint8_t;
+
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 at_keyword (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 bad_string (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 bad_url (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 comment (
     TokenValue_t const * value);
 
@@ -267,10 +281,10 @@ typedef struct Dimension {
     float value;
 
     /** <No documentation available> */
-    int32_t const * int_value;
+    int32_t * int_value;
 
     /** <No documentation available> */
-    int8_t const * unit;
+    Vec_uint8_t unit;
 } Dimension_t;
 
 /** <No documentation available> */
@@ -279,22 +293,27 @@ dimension (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+void
+free_rstr (
+    Vec_uint8_t value);
+
+/** <No documentation available> */
+Vec_uint8_t
 function (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 hash (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 id_hash (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 ident (
     TokenValue_t const * value);
 
@@ -307,7 +326,7 @@ typedef struct Number {
     float value;
 
     /** <No documentation available> */
-    int32_t const * int_value;
+    int32_t * int_value;
 } Number_t;
 
 /** <No documentation available> */
@@ -324,7 +343,7 @@ typedef struct Percentage {
     float unit_value;
 
     /** <No documentation available> */
-    int32_t const * int_value;
+    int32_t * int_value;
 } Percentage_t;
 
 /** <No documentation available> */
@@ -333,37 +352,23 @@ percentage (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 quoted_string (
     TokenValue_t const * value);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 unquoted_url (
     TokenValue_t const * value);
-
-/** \brief
- *  Same as [`Vec<T>`][`rust::Vec`], but with guaranteed `#[repr(C)]` layout
- */
-typedef struct Vec_uint8 {
-    /** <No documentation available> */
-    uint8_t * ptr;
-
-    /** <No documentation available> */
-    size_t len;
-
-    /** <No documentation available> */
-    size_t cap;
-} Vec_uint8_t;
 
 /** <No documentation available> */
 Vec_uint8_t
 value_as_string (
     TokenValue_t const * value,
-    TokenType_t const * token_type);
+    TokenType_t token_type);
 
 /** <No documentation available> */
-int8_t const *
+Vec_uint8_t
 whitespace (
     TokenValue_t const * value);
 
