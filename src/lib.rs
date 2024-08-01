@@ -645,14 +645,11 @@ pub fn parse<'a>(parser: &'a mut cssparser::Parser, tokens: &mut Vec<Token>) -> 
     if token == cssparser::Token::CurlyBracketBlock || token == cssparser::Token::SquareBracketBlock || token == cssparser::Token::ParenthesisBlock {
         parser.parse_nested_block::<_, _, ()>(|p| {
             while let Ok(token) = p.next() {
-                // println!("Token: {:?}", token);
                 tokens.push(Token::from(token));
             }
             Ok(())
         }).expect("Failed to parse nested block");
-    }
-    // println!("Token: {:?}", token);
-    tokens.push(Token::from(token));
+    }    tokens.push(Token::from(token));
     Ok(())
 }
 
@@ -661,8 +658,7 @@ pub fn css_parse<'i>(input: *const i8) -> safer_ffi::Vec<Token> {
     let input = unsafe { std::ffi::CStr::from_ptr(input) };
     let mut input = cssparser::ParserInput::new(match input.to_str() {
         Ok(value) => value,
-        Err(e) => {
-            println!("Error: {:?}", e);
+        Err(_) => {
             return safer_ffi::Vec::EMPTY;
         }
     });
@@ -672,21 +668,11 @@ pub fn css_parse<'i>(input: *const i8) -> safer_ffi::Vec<Token> {
     loop {
         match parse(&mut parser, &mut tokens) {
             Ok(_) => (),
-            Err(e) => {
-                println!("Error: {:?}", e);
-                break;
-            }
+            Err(_) => break,
         }
     }
 
     let tokens: safer_ffi::Vec<Token> = tokens.into();
-
-    for token in tokens.iter() {
-        println!("{:#?}", token);
-    }
-
-    // debug the tokens vec ptr
-    println!("{:?}", tokens.as_ptr());
 
     tokens
 }
