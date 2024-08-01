@@ -1,10 +1,31 @@
-use std::ffi::{c_char, c_float, c_int, CString};
+#![allow(nonstandard_style)]
 
-#[allow(non_camel_case_types)]
-type c_str = *const c_char;
+use std::{ffi::{c_char, c_float, c_int, CString}, fmt::Debug};
+
+use safer_ffi::{derive_ReprC, ffi_export, prelude::repr_c};
+
+type cstr = *const c_char;
+
+macro_rules! to_cstr {
+    ($value:expr) => {
+        CString::from_raw($value).to_str().unwrap_or_default().to_string()
+    };
+}
+
+#[cfg(feature = "headers")]
+#[test]
+pub fn gen_headers() {
+    safer_ffi::headers::builder()
+        .to_file("test/parser.h")
+        .expect("Failed to write to file")
+        .generate()
+        .expect("Failed to generate headers");
+}
 
 // The C struct representations for their rust counterparts
+#[derive_ReprC]
 #[repr(u8)]
+#[derive(Debug)]
 pub enum TokenType {
     /// A [`<ident-token>`](https://drafts.csswg.org/css-syntax/#ident-token-diagram)
     Ident,
@@ -55,7 +76,7 @@ pub enum TokenType {
     /// The CSS Syntax spec does not generate tokens for comments,
     /// But we do, because we can (borrowed &str makes it cheap).
     ///
-    /// The value does not include the `/*` `*/` markers.
+    /// The value does not include the `/ *` `* /` markers.
     Comment,
 
     /// A `:` `<colon-token>`
@@ -131,28 +152,187 @@ pub enum TokenType {
     CloseCurlyBracket,
 }
 
+#[derive_ReprC]
+#[repr(opaque)]
+pub struct TokenValue(Value);
+
+macro_rules! cstr {
+    ($value:expr) => {
+        CString::new($value.to_string()).unwrap().into_raw()
+    };
+}
+
+impl<'i> From<cssparser::Token<'i>> for TokenValue {
+    fn from(value: cssparser::Token<'i>) -> Self {
+        match value {
+            cssparser::Token::Ident(ident) => Self(Value::new_ident(cstr!(ident))),
+            cssparser::Token::AtKeyword(at_keyword) => Self(Value::new_at_keyword(cstr!(at_keyword))),
+            cssparser::Token::Hash(hash) => Self(Value::new_hash(cstr!(hash))),
+            cssparser::Token::IDHash(id_hash) => Self(Value::new_id_hash(cstr!(id_hash))),
+            cssparser::Token::QuotedString(quoted_string) => Self(Value::new_quoted_string(cstr!(quoted_string))),
+            cssparser::Token::UnquotedUrl(unquoted_url) => Self(Value::new_unquoted_url(cstr!(unquoted_url))),
+            cssparser::Token::Comment(comment) => Self(Value::new_comment(cstr!(comment))),
+            cssparser::Token::Function(function) => Self(Value::new_function(cstr!(function))),
+            cssparser::Token::Percentage {
+                has_sign,
+                int_value,
+                unit_value,
+            } => Self(Value::new_percentage(
+                Percentage {
+                    has_sign,
+                    int_value: match int_value {
+                        Some(value) => &value,
+                        None => std::ptr::null(),
+                    },
+                    unit_value,
+                }
+            )),
+            cssparser::Token::Dimension {
+                has_sign,
+                value,
+                int_value,
+                unit,
+            } => Self(Value::new_dimension(
+                Dimension {
+                    has_sign,
+                    value,
+                    int_value: match int_value {
+                        Some(value) => &value,
+                        None => std::ptr::null(),
+                    },
+                    unit: cstr!(unit),
+                }
+            )),
+            cssparser::Token::Number {
+                has_sign,
+                value,
+                int_value,
+            } => Self(Value::new_number(
+                Number {
+                    has_sign,
+                    value,
+                    int_value: match int_value {
+                        Some(value) => &value,
+                        None => std::ptr::null(),
+                    },
+                }
+            )),
+            cssparser::Token::Delim(delim) => Self(Value::new_delim(delim as c_char)),
+            cssparser::Token::WhiteSpace(whitespace) => Self(Value::new_whitespace(cstr!(whitespace))),
+            cssparser::Token::BadString(bad_string) => Self(Value::new_bad_string(cstr!(bad_string))),
+            cssparser::Token::BadUrl(bad_url) => Self(Value::new_bad_url(cstr!(bad_url))),
+            cssparser::Token::CDC => Self(Value::empty()),
+            cssparser::Token::CDO => Self(Value::empty()),
+            cssparser::Token::CloseCurlyBracket => Self(Value::empty()),
+            cssparser::Token::CloseParenthesis => Self(Value::empty()),
+            cssparser::Token::CloseSquareBracket => Self(Value::empty()),
+            cssparser::Token::Colon => Self(Value::empty()),
+            cssparser::Token::Comma => Self(Value::empty()),
+            cssparser::Token::CurlyBracketBlock => Self(Value::empty()),
+            cssparser::Token::DashMatch => Self(Value::empty()),
+            cssparser::Token::IncludeMatch => Self(Value::empty()),
+            cssparser::Token::ParenthesisBlock => Self(Value::empty()),
+            cssparser::Token::PrefixMatch => Self(Value::empty()),
+            cssparser::Token::Semicolon => Self(Value::empty()),
+            cssparser::Token::SquareBracketBlock => Self(Value::empty()),
+            cssparser::Token::SubstringMatch => Self(Value::empty()),
+            cssparser::Token::SuffixMatch => Self(Value::empty()),
+        }
+    }
+}
+
+impl TokenValue {
+    pub fn new(value: Value) -> Self {
+        Self(value)
+    }
+
+    pub fn get_ident(&self) -> cstr {
+        unsafe { self.0.ident }
+    }
+
+    pub fn get_at_keyword(&self) -> cstr {
+        unsafe { self.0.at_keyword }
+    }
+
+    pub fn get_hash(&self) -> cstr {
+        unsafe { self.0.hash }
+    }
+
+    pub fn get_quoted_string(&self) -> cstr {
+        unsafe { self.0.quoted_string }
+    }
+
+    pub fn get_unquoted_url(&self) -> cstr {
+        unsafe { self.0.unquoted_url }
+    }
+
+    pub fn get_comment(&self) -> cstr {
+        unsafe { self.0.comment }
+    }
+
+    pub fn get_function(&self) -> cstr {
+        unsafe { self.0.function }
+    }
+
+    pub fn get_percentage(&self) -> Percentage {
+        unsafe { self.0.percentage }
+    }
+
+    pub fn get_dimension(&self) -> Dimension {
+        unsafe { self.0.dimension }
+    }
+
+    pub fn get_number(&self) -> Number {
+        unsafe { self.0.number }
+    }
+
+    pub fn get_whitespace(&self) -> cstr {
+        unsafe { self.0.whitespace }
+    }
+
+    pub fn get_bad_string(&self) -> cstr {
+        unsafe { self.0.bad_string }
+    }
+
+    pub fn get_bad_url(&self) -> cstr {
+        unsafe { self.0.bad_url }
+    }
+
+    pub fn get_delim(&self) -> c_char {
+        unsafe { self.0.delim }
+    }
+
+    pub fn get_id_hash(&self) -> cstr {
+        unsafe { self.0.id_hash }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        unsafe { self.0.empty == () }
+    }
+}
+
 #[repr(C)]
 pub union Value {
     /// The value of an [`Ident`](TokenType::Ident) token.
-    ident: c_str,
+    ident: cstr,
 
     /// The value of an [`AtKeyword`](TokenType::AtKeyword) token.
-    at_keyword: c_str,
+    at_keyword: cstr,
 
     /// The value of a [`Hash`](TokenType::Hash) token.
-    hash: c_str,
+    hash: cstr,
 
     /// The value of a [`QuotedString`](TokenType::QuotedString) token.
-    quoted_string: c_str,
+    quoted_string: cstr,
 
     /// The value of a [`UnquotedUrl`](TokenType::UnquotedUrl) token.
-    unquoted_url: c_str,
+    unquoted_url: cstr,
 
     /// The value of a [`Comment`](TokenType::Comment) token.
-    comment: c_str,
+    comment: cstr,
 
     /// The value of a [`Function`](TokenType::Function) token.
-    function: c_str,
+    function: cstr,
 
     /// The value of a [`Percentage`](TokenType::Percentage) token.
     percentage: Percentage,
@@ -164,19 +344,19 @@ pub union Value {
     number: Number,
 
     /// The value of a [`Whitespace`](TokenType::WhiteSpace) token
-    whitespace: c_str,
+    whitespace: cstr,
 
     /// The value of a [`BadString`](TokenType::BadString) token.
-    bad_string: c_str,
+    bad_string: cstr,
 
     /// The value of a [`BadUrl`](TokenType::BadUrl) token.
-    bad_url: c_str,
+    bad_url: cstr,
 
     /// The value of a [`Delim`](TokenType::Delim) token.
     delim: c_char,
 
     /// The value of a [`IDHash`](TokenType::IDHash) token.
-    id_hash: c_str,
+    id_hash: cstr,
 
     /// The value of any token that does not have a value.
     empty: (),
@@ -187,31 +367,31 @@ impl Value {
         Self { empty: () }
     }
 
-    pub fn new_ident(ident: c_str) -> Self {
+    pub fn new_ident(ident: cstr) -> Self {
         Self { ident, }
     }
 
-    pub fn new_at_keyword(at_keyword: c_str) -> Self {
+    pub fn new_at_keyword(at_keyword: cstr) -> Self {
         Self { at_keyword, }
     }
 
-    pub fn new_hash(hash: c_str) -> Self {
+    pub fn new_hash(hash: cstr) -> Self {
         Self { hash, }
     }
 
-    pub fn new_quoted_string(quoted_string: c_str) -> Self {
+    pub fn new_quoted_string(quoted_string: cstr) -> Self {
         Self { quoted_string, }
     }
 
-    pub fn new_unquoted_url(unquoted_url: c_str) -> Self {
+    pub fn new_unquoted_url(unquoted_url: cstr) -> Self {
         Self { unquoted_url, }
     }
 
-    pub fn new_comment(comment: c_str) -> Self {
+    pub fn new_comment(comment: cstr) -> Self {
         Self { comment, }
     }
 
-    pub fn new_function(function: c_str) -> Self {
+    pub fn new_function(function: cstr) -> Self {
         Self { function, }
     }
 
@@ -227,15 +407,15 @@ impl Value {
         Self { number, }
     }
 
-    pub fn new_whitespace(whitespace: c_str) -> Self {
+    pub fn new_whitespace(whitespace: cstr) -> Self {
         Self { whitespace, }
     }
 
-    pub fn new_bad_string(bad_string: c_str) -> Self {
+    pub fn new_bad_string(bad_string: cstr) -> Self {
         Self { bad_string, }
     }
 
-    pub fn new_bad_url(bad_url: c_str) -> Self {
+    pub fn new_bad_url(bad_url: cstr) -> Self {
         Self { bad_url, }
     }
 
@@ -243,11 +423,49 @@ impl Value {
         Self { delim }
     }
 
-    pub fn new_id_hash(id_hash: c_str) -> Self {
+    pub fn new_id_hash(id_hash: cstr) -> Self {
         Self { id_hash, }
     }
 }
 
+#[no_mangle]
+pub fn get_token_type(token: &cssparser::Token) -> TokenType {
+    match token {
+        cssparser::Token::Ident(_) => TokenType::Ident,
+        cssparser::Token::AtKeyword(_) => TokenType::AtKeyword,
+        cssparser::Token::Hash(_) => TokenType::Hash,
+        cssparser::Token::IDHash(_) => TokenType::IDHash,
+        cssparser::Token::QuotedString(_) => TokenType::QuotedString,
+        cssparser::Token::UnquotedUrl(_) => TokenType::UnquotedUrl,
+        cssparser::Token::Comment(_) => TokenType::Comment,
+        cssparser::Token::Function(_) => TokenType::Function,
+        cssparser::Token::Percentage { .. } => TokenType::Percentage,
+        cssparser::Token::Dimension { .. } => TokenType::Dimension,
+        cssparser::Token::Number { .. } => TokenType::Number,
+        cssparser::Token::Delim(_) => TokenType::Delim,
+        cssparser::Token::Colon => TokenType::Colon,
+        cssparser::Token::Semicolon => TokenType::Semicolon,
+        cssparser::Token::Comma => TokenType::Comma,
+        cssparser::Token::IncludeMatch => TokenType::IncludeMatch,
+        cssparser::Token::DashMatch => TokenType::DashMatch,
+        cssparser::Token::PrefixMatch => TokenType::PrefixMatch,
+        cssparser::Token::SuffixMatch => TokenType::SuffixMatch,
+        cssparser::Token::SubstringMatch => TokenType::SubstringMatch,
+        cssparser::Token::CDO => TokenType::CDO,
+        cssparser::Token::CDC => TokenType::CDC,
+        cssparser::Token::ParenthesisBlock => TokenType::ParenthesisBlock,
+        cssparser::Token::SquareBracketBlock => TokenType::SquareBracketBlock,
+        cssparser::Token::CurlyBracketBlock => TokenType::CurlyBracketBlock,
+        cssparser::Token::BadUrl(_) => TokenType::BadUrl,
+        cssparser::Token::BadString(_) => TokenType::BadString,
+        cssparser::Token::CloseParenthesis => TokenType::CloseParenthesis,
+        cssparser::Token::CloseSquareBracket => TokenType::CloseSquareBracket,
+        cssparser::Token::CloseCurlyBracket => TokenType::CloseCurlyBracket,
+        cssparser::Token::WhiteSpace(_) => TokenType::WhiteSpace,
+    }
+}
+
+#[derive_ReprC]
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct Number {
@@ -256,15 +474,28 @@ pub struct Number {
     int_value: *const c_int,
 }
 
+#[derive_ReprC]
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Copy)]
 pub struct Dimension {
     has_sign: bool,
     value: c_float,
     int_value: *const c_int,
-    unit: c_str,
+    unit: cstr,
 }
 
+impl Clone for Dimension {
+    fn clone(&self) -> Self {
+        Self {
+            has_sign: self.has_sign,
+            value: self.value,
+            int_value: self.int_value,
+            unit: self.unit,
+        }
+    }
+}
+
+#[derive_ReprC]
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct Percentage {
@@ -273,15 +504,70 @@ pub struct Percentage {
     int_value: *const c_int,
 }
 
+#[derive_ReprC]
 #[repr(C)]
 pub struct Token {
     pub token_type: TokenType,
-    pub value: Value,
+    /// This is an opaque pointer to the actual value of the token
+    /// to get the value, you need to pass this to the appropriate function get_* function
+    /// depending on the token type
+    /// ```cpp
+    /// switch (token.token_type) {
+    ///    case TokenType::Ident: {
+    ///       auto value = token.value.get_ident();
+    ///    } break;
+    ///    case TokenType::AtKeyword: {
+    ///      auto value = token.value.get_at_keyword();
+    ///    } break;
+    ///    etc...
+    /// }
+    /// ```
+    pub value: repr_c::Box<TokenValue>,
+}
+
+impl Debug for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let value = match self.token_type {
+            TokenType::Ident => unsafe { to_cstr!(self.value.get_ident().cast_mut()) },
+            TokenType::AtKeyword => unsafe { to_cstr!(self.value.get_at_keyword().cast_mut()) },
+            TokenType::Hash => unsafe { to_cstr!(self.value.get_hash().cast_mut()) },
+            TokenType::IDHash => unsafe { to_cstr!(self.value.get_id_hash().cast_mut()) },
+            TokenType::QuotedString => unsafe { to_cstr!(self.value.get_quoted_string().cast_mut()) },
+            TokenType::UnquotedUrl => unsafe { to_cstr!(self.value.get_unquoted_url().cast_mut()) },
+            TokenType::Comment => unsafe { to_cstr!(self.value.get_comment().cast_mut()) },
+            TokenType::Function => unsafe { to_cstr!(self.value.get_function().cast_mut()) },
+            TokenType::WhiteSpace => unsafe { to_cstr!(self.value.get_whitespace().cast_mut()) },
+            TokenType::BadString => unsafe { to_cstr!(self.value.get_bad_string().cast_mut()) },
+            TokenType::BadUrl => unsafe { to_cstr!(self.value.get_bad_url().cast_mut()) },
+            TokenType::Percentage => format!("{:?}", self.value.get_percentage()),
+            TokenType::Dimension => format!("{:?}", self.value.get_dimension()),
+            TokenType::Number => format!("{:?}", self.value.get_number()),
+            TokenType::Delim => format!("{:?}", self.value.get_delim()),
+            TokenType::Colon => ":".to_string(),
+            TokenType::Semicolon => ";".to_string(),
+            TokenType::Comma => ",".to_string(),
+            TokenType::IncludeMatch => "~=".to_string(),
+            TokenType::DashMatch => "|=".to_string(),
+            TokenType::PrefixMatch => "^=".to_string(),
+            TokenType::SuffixMatch => "$=".to_string(),
+            TokenType::SubstringMatch => "*=".to_string(),
+            TokenType::CDO => "<!--".to_string(),
+            TokenType::CDC => "-->".to_string(),
+            TokenType::ParenthesisBlock => "(".to_string(),
+            TokenType::SquareBracketBlock => "[".to_string(),
+            TokenType::CurlyBracketBlock => "{".to_string(),
+            TokenType::CloseParenthesis => ")".to_string(),
+            TokenType::CloseSquareBracket => "]".to_string(),
+            TokenType::CloseCurlyBracket => "}".to_string(),
+        };
+
+        write!(f, "Token {{ token_type: {:?}, value: {:?} }}", self.token_type, value)
+    }
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, value: Value) -> Token {
-        Self { token_type, value }
+    pub fn new(token_type: TokenType, value: TokenValue) -> Token {
+        Self { token_type, value: Box::new(value).into() }
     }
 }
 
@@ -293,119 +579,53 @@ impl<'a> From<&cssparser::Token<'a>> for Token {
 
 impl<'a> From<cssparser::Token<'a>> for Token {
     fn from(value: cssparser::Token<'a>) -> Self {
-        match value {
-            cssparser::Token::Ident(ident) => Token::new(TokenType::Ident, Value::new_ident(
-                CString::new(ident.to_string()).expect("Failed to convert ident to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::AtKeyword(at_keyword) => Token::new(TokenType::AtKeyword, Value::new_at_keyword(
-                CString::new(at_keyword.to_string()).expect("Failed to convert at keyword to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::Hash(hash) => Token::new(TokenType::Hash, Value::new_hash(
-                CString::new(hash.to_string()).expect("Failed to convert hash to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::IDHash(id_hash) => Token::new(TokenType::IDHash, Value::new_id_hash(
-                CString::new(id_hash.to_string()).expect("Failed to convert id hash to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::QuotedString(quoted_string) => Token::new(TokenType::QuotedString, Value::new_quoted_string(
-                CString::new(quoted_string.to_string()).expect("Failed to convert quoted string to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::UnquotedUrl(unquoted_url) => Token::new(TokenType::UnquotedUrl, Value::new_unquoted_url(
-                CString::new(unquoted_url.to_string()).expect("Failed to convert unquoted url to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::Comment(comment) => Token::new(TokenType::Comment, Value::new_comment(
-                CString::new(comment.to_string()).expect("Failed to convert comment to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::Function(function) => Token::new(TokenType::Function, Value::new_function(
-                CString::new(function.to_string()).expect("Failed to convert function to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::Percentage {
-                has_sign,
-                int_value,
-                unit_value,
-            } => Token::new(TokenType::Percentage, Value::new_percentage(
-                Percentage {
-                    has_sign,
-                    int_value: match int_value {
-                        Some(value) => &value,
-                        None => std::ptr::null(),
-                    },
-                    unit_value,
-                }
-            )),
-            cssparser::Token::Dimension {
-                has_sign,
-                int_value,
-                unit,
-                value,
-            } => Token::new(TokenType::Dimension, Value::new_dimension(
-                Dimension {
-                    has_sign,
-                    int_value: match int_value {
-                        Some(value) => &value,
-                        None => std::ptr::null(),
-                    },
-                    unit: CString::new(unit.to_string()).expect("Failed to convert unit to CString").into_boxed_c_str().as_ptr(),
-                    value,
-                }
-            )),
-            cssparser::Token::Number {
-                has_sign,
-                int_value,
-                value,
-            } => Token::new(TokenType::Number, Value::new_number(
-                Number {
-                    has_sign,
-                    int_value: match int_value {
-                        Some(value) => &value,
-                        None => std::ptr::null(),
-                    },
-                    value,
-                }
-            )),
-            cssparser::Token::WhiteSpace(whitespace) => Token::new(TokenType::WhiteSpace, Value::new_whitespace(
-                CString::new(whitespace.to_string()).expect("Failed to convert whitespace to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::BadString(bad_string) => Token::new(TokenType::BadString, Value::new_bad_string(
-                CString::new(bad_string.to_string()).expect("Failed to convert bad string to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::BadUrl(bad_url) => Token::new(TokenType::BadUrl, Value::new_bad_url(
-                CString::new(bad_url.to_string()).expect("Failed to convert bad url to CString").into_boxed_c_str().as_ptr(),
-            )),
-            cssparser::Token::Delim(delim) => Token::new(TokenType::Delim, Value::new_delim(delim as c_char)),
-            cssparser::Token::Colon => Token::new(TokenType::Colon, Value::empty()),
-            cssparser::Token::Semicolon => Token::new(TokenType::Semicolon, Value::empty()),
-            cssparser::Token::Comma => Token::new(TokenType::Comma, Value::empty()),
-            cssparser::Token::IncludeMatch => Token::new(TokenType::IncludeMatch, Value::empty()),
-            cssparser::Token::DashMatch => Token::new(TokenType::DashMatch, Value::empty()),
-            cssparser::Token::PrefixMatch => Token::new(TokenType::PrefixMatch, Value::empty()),
-            cssparser::Token::SuffixMatch => Token::new(TokenType::SuffixMatch, Value::empty()),
-            cssparser::Token::SubstringMatch => Token::new(TokenType::SubstringMatch, Value::empty()),
-            cssparser::Token::CDO => Token::new(TokenType::CDO, Value::empty()),
-            cssparser::Token::CDC => Token::new(TokenType::CDC, Value::empty()),
-            cssparser::Token::ParenthesisBlock => Token::new(TokenType::ParenthesisBlock, Value::empty()),
-            cssparser::Token::SquareBracketBlock => Token::new(TokenType::SquareBracketBlock, Value::empty()),
-            cssparser::Token::CurlyBracketBlock => Token::new(TokenType::CurlyBracketBlock, Value::empty()),
-            cssparser::Token::CloseParenthesis => Token::new(TokenType::CloseParenthesis, Value::empty()),
-            cssparser::Token::CloseSquareBracket => Token::new(TokenType::CloseSquareBracket, Value::empty()),
-            cssparser::Token::CloseCurlyBracket => Token::new(TokenType::CloseCurlyBracket, Value::empty()),
-        }
+        Token::new(get_token_type(&value), TokenValue::from(value))
     }
 }
 
 #[no_mangle]
-#[allow(unused_variables, unused_assignments)]
-pub extern "C" fn css_parse<'i>(mut tokens: *mut Token, input: *const c_char) -> usize {
+pub fn parse<'a>(parser: &'a mut cssparser::Parser, tokens: &mut Vec<Token>) -> Result<(), cssparser::ParseError<'a, ()>> {
+    let token = parser.next()?.clone();
+    if token == cssparser::Token::CurlyBracketBlock || token == cssparser::Token::SquareBracketBlock || token == cssparser::Token::ParenthesisBlock {
+        parser.parse_nested_block::<_, _, ()>(|p| {
+            while let Ok(token) = p.next() {
+                // println!("Token: {:?}", token);
+                tokens.push(Token::from(token));
+            }
+            Ok(())
+        }).expect("Failed to parse nested block");
+    }
+    // println!("Token: {:?}", token);
+    tokens.push(Token::from(token));
+    Ok(())
+}
+
+#[ffi_export]
+pub fn css_parse<'i>(input: *const c_char) -> safer_ffi::Vec<Token> {
     let input = unsafe { std::ffi::CStr::from_ptr(input) };
-    let mut input = cssparser::ParserInput::new(input.to_str().unwrap());
+    let mut input = cssparser::ParserInput::new(match input.to_str() {
+        Ok(value) => value,
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return safer_ffi::Vec::EMPTY;
+        }
+    });
     let mut parser = cssparser::Parser::new(&mut input);
-    let mut _tokens = Vec::new();
-    while let Ok(token) = parser.next() {
-        _tokens.push(Token::from(token));
+    let mut tokens = Vec::new();
+
+    loop {
+        match parse(&mut parser, &mut tokens) {
+            Ok(_) => (),
+            Err(e) => {
+                println!("Error: {:?}", e);
+                break;
+            }
+        }
     }
 
-    // Convert the vector to a pointer
-    tokens = _tokens.as_mut_ptr();
+    for token in tokens.iter() {
+        println!("{:#?}", token);
+    }
 
-    // Return the length of the vector
-    _tokens.len()
+    safer_ffi::Vec::from(tokens)
 }

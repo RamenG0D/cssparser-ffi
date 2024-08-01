@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "system_error": "cpp",
+        "type_traits": "cpp",
+        "xtr1common": "cpp",
+        "xutility": "cpp",
+        "xstring": "cpp",
+        "cstdio": "cpp"
+    }
+}
