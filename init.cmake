@@ -5,13 +5,13 @@ function(add_cssparser_as_dependency TARGET_NAME)
     if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         message(NOTICE "CSSParser: Building for Windows")
         set(CSSPARSER_LIBRARIES ${CSSPARSER_LIBRARIES} CACHE INTERNAL "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/release/c_cssparser.lib")
-        add_custom_command(TARGET ${TARGET_PROJECT}
+        add_custom_command(TARGET ${TARGET_NAME}
             COMMAND "run.bat"
             WORKING_DIRECTORY
         )
     elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
         message(NOTICE "CSSParser: Building for Linux")
-        add_custom_command(TARGET ${TARGET_PROJECT}
+        add_custom_command(TARGET ${TARGET_NAME}
         COMMAND "run.sh"
         WORKING_DIRECTORY
         )
