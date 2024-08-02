@@ -34,5 +34,47 @@ int main(void) {
 
     return 0;
 }
-
 ```
+
+# Building
+
+First you need to clone the repository
+```bash
+git clone https://github.com/RamenG0D/cssparser-ffi.git
+```
+
+Then run
+```bash
+cd cssparser-ffi
+```
+
+Then you need to build the project for your platform
+
+- [Linux](#linux)
+- [Windows](#windows)
+- [Mac](#mac)
+
+# Linux
+
+Just run `run.sh` from the c_cssparser directory.
+
+```bash
+./run.sh
+```
+
+You should now have an up to date header file inside the test folder named `parser.h` and a static library named `libcss_parser.a` inside the `target/release` directory.
+
+# Windows
+
+Just run `run.bat` from the c_cssparser directory.
+
+This command runs the build script
+```powershell
+./run.bat
+```
+
+You should now have an up to date header file inside the test folder named `parser.h` and a static library named `libcss_parser.a` inside the `target/release` directory.
+
+# Mac
+
+Macos is theoretically supported but entirely untested. If you are on a mac and you have tested this please let me know so I can update this section.
