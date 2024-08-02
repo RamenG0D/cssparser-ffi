@@ -21,7 +21,7 @@ The goal in the future is to more closely resemble the cssparser api, but for no
 #include <iostream>
 #include <string>
 
-#include "css_parser.h"
+#include "parser.h"
 
 int main(void) {
     const char* css = "body { background-color: #f00; }";
