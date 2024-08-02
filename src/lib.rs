@@ -632,12 +632,26 @@ pub fn parse<'a>(parser: &mut cssparser::Parser, mut tokens: Vec<Token>) -> Resu
     let parse_inner = |parser: &mut cssparser::Parser, tokens: Vec<Token>| parser.parse_nested_block::<_, Vec<Token>, Vec<Token>>(|p| parse(p, tokens)).expect("Failed to parse nested block");
     while let Ok(token) = parser.next().cloned() {
         tokens.push(Token::from(&token));
-        if let cssparser::Token::Function(_) = token {
-            tokens = parse_inner(parser, tokens);
-        } else if token == cssparser::Token::CurlyBracketBlock ||
-        token == cssparser::Token::SquareBracketBlock ||
-        token == cssparser::Token::ParenthesisBlock {
-            tokens = parse_inner(parser, tokens);
+        match token {
+            cssparser::Token::Function(_) => {
+                tokens = parse_inner(parser, tokens);
+            },
+            cssparser::Token::CurlyBracketBlock => {
+                tokens = parse_inner(parser, tokens);
+                // add a closing token
+                tokens.push(cssparser::Token::CloseCurlyBracket.into());
+            },
+            cssparser::Token::SquareBracketBlock => {
+                tokens = parse_inner(parser, tokens);
+                // add a closing token
+                tokens.push(cssparser::Token::CloseSquareBracket.into());
+            },
+            cssparser::Token::ParenthesisBlock => {
+                tokens = parse_inner(parser, tokens);
+                // add a closing token
+                tokens.push(cssparser::Token::CloseParenthesis.into());
+            },
+            _ => {},
         }
     }
     Ok(tokens)

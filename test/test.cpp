@@ -20,13 +20,13 @@ std::string input() {
     // read the file
     std::string input;
 
-    // read in the whole file using its length
+    // get the total file size
     file.seekg(0, std::ios::end);
-    input.resize(file.tellg());
+    input.resize(file.tellg()); // resize the string to the file size
     file.seekg(0, std::ios::beg);
 
     // read the file's text into the string
-    file.read(&input[0], input.size());
+    file.read(const_cast<char*>(input.c_str()), input.size());
 
     // close the file
     file.close();
