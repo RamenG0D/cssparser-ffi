@@ -26,7 +26,7 @@ The goal in the future is to more closely resemble the cssparser api, but for no
 int main(void) {
     const char* css = "body { background-color: #f00; }";
     // parses the css in the string and returns an array of tokens
-    Vec_Tokens_t tokens = parse_css((int8_t*)css);
+    Vec_Tokens_t tokens = parse_css(css);
 
     // iterate over all tokens
     for (size_t i = 0; i < tokens.length; i++) {

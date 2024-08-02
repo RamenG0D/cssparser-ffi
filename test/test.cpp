@@ -39,8 +39,7 @@ std::string input() {
 int main(void) {
     // we use a string literal as input for the parser
     // and a multi-line string for better readability
-    std::string in = input();
-    const int8_t* css_input = (int8_t*)in.c_str();
+    std::string css = input();
     // just use a char* for the input behind the scenes
     // so this is also perfectly valid.
     //
@@ -54,7 +53,7 @@ int main(void) {
     //     }
     // )";
 
-    Vec_Token_t tokens = parse_css(css_input);
+    Vec_Token_t tokens = parse_css(css.c_str());
     if(tokens.ptr == nullptr) {
         std::cout << "Error: Failed to parse tokens array" << std::endl;
         return 1;
@@ -78,14 +77,14 @@ int main(void) {
 void showcase(void) {
     std::string css = R"(
 /* This is a comment */
-class {
+.class {
     color: red;
     custom-property: 1;
     var-property: var(--custom-property);
 })";
     std::cout << "CSS:" << std::endl << css << std::endl << std::endl;
     // get the tokens array
-    Vec_Token_t tokens = parse_css((const int8_t*)css.c_str());
+    Vec_Token_t tokens = parse_css(css.c_str());
 
     // get the first token
     Token_t token = tokens.ptr[1];
