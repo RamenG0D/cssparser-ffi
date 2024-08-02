@@ -11,8 +11,10 @@ function(add_cssparser_as_dependency TARGET_NAME)
         )
     elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
         message(NOTICE "CSSParser: Building for Linux")
-        execute_process(COMMAND "run.sh")
-
+        add_custom_command(TARGET ${TARGET_PROJECT}
+        COMMAND "run.sh"
+        WORKING_DIRECTORY
+        )
         set(CSSPARSER_LIBRARIES ${CSSPARSER_LIBRARIES} CACHE INTERNAL "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/release/c_cssparser.a")
     endif()
 endfunction()
