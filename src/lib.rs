@@ -21,6 +21,38 @@ pub mod token_union;
 pub mod token_types;
 
 #[derive_ReprC]
+#[repr(opaque)]
+pub struct Parser<'i, 't> {
+    data: std::ffi::CString,
+    rdata: &'i str,
+    inner: Option<cssparser::Parser<'i, 't>>,
+}
+
+impl<'i: 't, 't> Parser<'i, 't> {
+    #[inline]
+    pub fn new(data: *const safer_ffi::c_char) -> repr_c::Box<Self> {
+        let data = unsafe { std::ffi::CString::from_raw(data as *mut i8) };
+        let rdata = data.to_str().expect("Failed to convert input to string");
+        let inner = cssparser::Parser::new(&mut cssparser::ParserInput::new(rdata));
+        Box::new(Self { data, rdata, inner: Some(inner) }).into()
+    }
+}
+
+#[ffi_export]
+pub fn ParserNew(input: *const safer_ffi::c_char) -> repr_c::Box<Parser> {
+    Box::new(Parser::new(input)).into()
+}
+
+#[ffi_export]
+pub fn ParserFree(parser: repr_c::Box<Parser>) {
+    let value: Box<Parser> = parser.into();
+    drop(value);
+}
+
+// #[ffi_export]
+// pub fn 
+
+#[derive_ReprC]
 #[repr(C)]
 pub struct Token {
     pub token_type: TokenType,
@@ -161,6 +193,7 @@ pub fn free_tokens(tokens: safer_ffi::Vec<Token>) {
 }
 
 #[ffi_export]
+#[deprecated(note = "Use `ParserNew` to create a new parser instead")]
 pub fn parse_css<'i>(input: *const safer_ffi::c_char) -> safer_ffi::Vec<Token> {
     let input = unsafe { std::ffi::CStr::from_ptr(input as *const _).to_str().expect("Failed to convert input to string") };
     let mut input = cssparser::ParserInput::new(input);
