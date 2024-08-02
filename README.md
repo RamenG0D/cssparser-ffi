@@ -5,6 +5,10 @@ This rust library aims to provide a proper api to interop with cssparser, anothe
 
 ## Usage
 
+Currently the api is very simple, it only provides a single function to parse css (`parse_css`) and a single function to free the tokens (`free_tokens`).
+
+The goal in the future is to more closely resemble the cssparser api, but for now this is what i have made currently. As passing a `Vec` from rust to C is not the easiest thing to do (had several difficulties with unions and Strings aswell as the `Vec` itself) so i decided to just make an opaque struct that contains my union of the token values and use safer-ffi to pass `Vec`'s and `String`'s around.
+
 ```cpp
 // THESE ARE THE REQUIRED!
 #pragma comment(lib, "userenv.lib")
@@ -21,12 +25,14 @@ This rust library aims to provide a proper api to interop with cssparser, anothe
 
 int main(void) {
     const char* css = "body { background-color: #f00; }";
+    // parses the css in the string and returns an array of tokens
     Vec_Tokens_t tokens = parse_css((int8_t*)css);
 
     // iterate over all tokens
-    for (int i = 0; i < tokens.length; i++) {
+    for (size_t i = 0; i < tokens.length; i++) {
         Token_t token = tokens.tokens[i];
         // do something with the token
+        // Ex: debug_token(&token);
     }
 
     // free the tokens

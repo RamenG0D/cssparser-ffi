@@ -78,7 +78,7 @@ int main(void) {
 void showcase(void) {
     std::string css = R"(
 /* This is a comment */
-.class {
+class {
     color: red;
     custom-property: 1;
     var-property: var(--custom-property);
