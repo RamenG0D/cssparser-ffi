@@ -23,9 +23,9 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Desktop**
- - OS: [SYSTEM]
+- OS: [SYSTEM]
 - OS_VER: [SYS_VER]
- - Version [APPLICATION_VER]
+- Version [APPLICATION_VER]
 
 **Additional context**
 Add any other context (if applicable) about the problem here.
